@@ -36,6 +36,25 @@ def _check_budget(api: FootballAPI) -> bool:
     return True
 
 
+def _fetch_api_status(api: FootballAPI) -> dict[str, Any] | None:
+    """Fetch live API status and return a flat dict for embedding in log docs."""
+    try:
+        raw = api.status()
+        resp = raw.get("response", {})
+        req = resp.get("requests", {})
+        sub = resp.get("subscription", {})
+        return {
+            "requests_current": req.get("current"),
+            "requests_limit": req.get("limit_day"),
+            "plan": sub.get("plan"),
+            "active": sub.get("active"),
+            "expires": sub.get("end"),
+        }
+    except Exception:
+        log.warning("Could not fetch API status")
+        return None
+
+
 def _scrape_and_store(
     api: FootballAPI,
     store: Store,
@@ -83,7 +102,8 @@ def job_full_sweep(api: FootballAPI, store: Store) -> None:
 
     duration = time.time() - t0
     req_used = api.requests_today - req_before
-    store.log_scrape("full_sweep", leagues, total_fixtures, req_used, duration)
+    status = _fetch_api_status(api)
+    store.log_scrape("full_sweep", leagues, total_fixtures, req_used, duration, api_status=status)
     log.info("FULL SWEEP done: %d fixtures, %d requests, %.1fs", total_fixtures, req_used, duration)
 
 
@@ -122,7 +142,8 @@ def job_refresh_fixtures(api: FootballAPI, store: Store) -> None:
 
     duration = time.time() - t0
     req_used = api.requests_today - req_before
-    store.log_scrape("fixture_refresh", leagues, total, req_used, duration)
+    status = _fetch_api_status(api)
+    store.log_scrape("fixture_refresh", leagues, total, req_used, duration, api_status=status)
     log.info("FIXTURE REFRESH done: %d fixtures, %d requests, %.1fs", total, req_used, duration)
 
 
@@ -169,7 +190,8 @@ def job_closing_line(api: FootballAPI, store: Store, hours_ahead: float = 24) ->
 
     duration = time.time() - t0
     req_used = api.requests_today - req_before
-    store.log_scrape(strategy, league_names, total_fixtures, req_used, duration)
+    status = _fetch_api_status(api)
+    store.log_scrape(strategy, league_names, total_fixtures, req_used, duration, api_status=status)
     log.info("CLOSING LINE (<%dh) done: %d fixtures, %d requests, %.1fs",
              int(hours_ahead), total_fixtures, req_used, duration)
 
@@ -234,6 +256,7 @@ def job_polymarket_target(api: FootballAPI, store: Store) -> None:
 
     duration = time.time() - t0
     req_used = api.requests_today - req_before
-    store.log_scrape("polymarket", [], total_fixtures, req_used, duration)
+    status = _fetch_api_status(api)
+    store.log_scrape("polymarket", [], total_fixtures, req_used, duration, api_status=status)
     log.info("POLYMARKET TARGET done: %d fixtures, %d requests, %.1fs",
              total_fixtures, req_used, duration)

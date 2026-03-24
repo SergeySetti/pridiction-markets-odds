@@ -165,14 +165,42 @@ class Store:
         fixtures_scraped: int,
         requests_used: int,
         duration_s: float,
+        api_status: dict[str, Any] | None = None,
     ) -> None:
-        self.db.scrape_log.insert_one({
+        doc: dict[str, Any] = {
             "ts": datetime.now(timezone.utc),
             "strategy": strategy,
             "leagues": leagues,
             "fixtures_scraped": fixtures_scraped,
             "requests_used": requests_used,
             "duration_s": round(duration_s, 2),
+        }
+        if api_status:
+            doc["api_status"] = api_status
+        self.db.scrape_log.insert_one(doc)
+
+    def log_api_status(self, status_response: dict[str, Any]) -> None:
+        """Log a standalone API status snapshot to scrape_log.
+
+        Useful for tracking quota usage over time, even outside scrape jobs.
+        """
+        resp = status_response.get("response", {})
+        req = resp.get("requests", {})
+        sub = resp.get("subscription", {})
+        self.db.scrape_log.insert_one({
+            "ts": datetime.now(timezone.utc),
+            "strategy": "api_status",
+            "api_status": {
+                "requests_current": req.get("current"),
+                "requests_limit": req.get("limit_day"),
+                "plan": sub.get("plan"),
+                "active": sub.get("active"),
+                "expires": sub.get("end"),
+            },
+            "leagues": [],
+            "fixtures_scraped": 0,
+            "requests_used": 0,
+            "duration_s": 0,
         })
 
     # -- stats ----------------------------------------------------------------

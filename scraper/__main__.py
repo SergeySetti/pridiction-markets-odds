@@ -84,12 +84,18 @@ def _load_env() -> tuple[str, str]:
 
 
 def cmd_status(api: FootballAPI, store: Store) -> None:
-    """Print current account and database status."""
+    """Print current account and database status, and persist to scrape_log."""
     try:
         status = api.status()
         req = status["response"]["requests"]
         sub = status["response"]["subscription"]
         print(f"Plan: {sub['plan']}  |  Requests: {req['current']}/{req['limit_day']}  |  Expires: {sub['end']}")
+        # Persist status snapshot to MongoDB
+        try:
+            store.log_api_status(status)
+            log.info("API status logged to scrape_log")
+        except Exception as e:
+            log.warning("Could not log API status to MongoDB: %s", e)
     except Exception as e:
         print(f"API status error: {e}")
 
@@ -169,6 +175,15 @@ def cmd_scheduler(api: FootballAPI, store: Store) -> None:
     log.info("  Fixture refresh: every %ds", INTERVAL_FIXTURE_REFRESH)
     log.info("  Polymarket:      every %ds", INTERVAL_POLYMARKET_REFRESH)
     log.info("=" * 60)
+
+    # Log API status at startup
+    try:
+        status = api.status()
+        store.log_api_status(status)
+        req = status["response"]["requests"]
+        log.info("API quota: %d/%d used", req.get("current", 0), req.get("limit_day", 0))
+    except Exception:
+        log.warning("Could not log initial API status")
 
     # Run initial jobs immediately
     log.info("Running initial jobs...")
