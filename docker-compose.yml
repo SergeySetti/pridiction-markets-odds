@@ -1,0 +1,31 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: odds_scraper
+
+  scraper:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    env_file:
+      - .env
+    environment:
+      MONGODB_URI: mongodb://mongo:27017
+      LOG_LEVEL: INFO
+      # Austerity knob: 1=lean(EPL+UCL), 2=default, 3=full
+      ACTIVE_TIER: 3
+      SEASON: 2025
+      # Override intervals (seconds) if needed:
+      # INTERVAL_FULL_SWEEP: 10800
+      # INTERVAL_CLOSING_24H: 3600
+      # INTERVAL_CLOSING_6H: 900
+
+volumes:
+  mongo_data:
