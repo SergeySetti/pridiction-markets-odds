@@ -6,11 +6,11 @@ Scheduled scraper that collects bookmaker odds from [API-Football](https://www.a
 
 The scraper combines three strategies to maximize data value within the API quota (7,500 req/day on Pro):
 
-| # | Strategy | Interval | What it does | Cost/day |
-|---|----------|----------|--------------|----------|
-| 1 | **Full Sweep** | 3h | All active leagues, all pages | ~208 req |
-| 2 | **Closing Line** | 1h / 15m | Fixtures approaching kickoff (<24h / <6h) | ~200–600 req |
-| 3 | **Polymarket Target** | 15m | Only fixtures listed on Polymarket | ~160 req |
+| # | Strategy              | Interval | What it does                              | Cost/day     |
+|---|-----------------------|----------|-------------------------------------------|--------------|
+| 1 | **Full Sweep**        | 3h       | All active leagues, all pages             | ~208 req     |
+| 2 | **Closing Line**      | 1h / 15m | Fixtures approaching kickoff (<24h / <6h) | ~200–600 req |
+| 3 | **Polymarket Target** | 15m      | Only fixtures listed on Polymarket        | ~160 req     |
 
 **Total: ~600–1,000 req/day (8–13% of budget)**
 
@@ -18,11 +18,11 @@ The scraper combines three strategies to maximize data value within the API quot
 
 Control league coverage via `ACTIVE_TIER` env var:
 
-| Tier | Leagues | Pages/sweep |
-|------|---------|-------------|
-| 1 (lean) | EPL, UCL | 4 |
-| 2 (default) | + LaLiga, Bundesliga, Serie A | 13 |
-| 3 (full) | + Ligue 1, UEL, UECL | 17 |
+| Tier        | Leagues                       | Pages/sweep |
+|-------------|-------------------------------|-------------|
+| 1 (lean)    | EPL, UCL                      | 4           |
+| 2 (default) | + LaLiga, Bundesliga, Serie A | 13          |
+| 3 (full)    | + Ligue 1, UEL, UECL          | 17          |
 
 ## Quick Start
 
@@ -106,17 +106,17 @@ Per-run metadata: strategy, duration, request count, leagues scraped.
 
 All config via environment variables (see `.env.example`). Key knobs:
 
-| Var | Default | Description |
-|-----|---------|-------------|
-| `FOOTBALL_API_KEY` | required | API-Football key |
-| `MONGODB_URI` | `mongodb://localhost:27017` | MongoDB connection string |
-| `ACTIVE_TIER` | `3` | League coverage: 1=lean, 2=mid, 3=full |
-| `SEASON` | `2025` | Football season to scrape |
-| `INTERVAL_FULL_SWEEP` | `10800` | Seconds between full sweeps (3h) |
-| `INTERVAL_CLOSING_6H` | `900` | Seconds between closing-line scrapes (15m) |
-| `DAILY_REQUEST_LIMIT` | `7500` | Budget cap — stops scraping when hit |
-| `BUDGET_ALERT_PCT` | `0.80` | Log warning at this % of daily budget |
-| `LOG_LEVEL` | `INFO` | Python log level |
+| Var                   | Default                     | Description                                |
+|-----------------------|-----------------------------|--------------------------------------------|
+| `FOOTBALL_API_KEY`    | required                    | API-Football key                           |
+| `MONGODB_URI`         | `mongodb://localhost:27017` | MongoDB connection string                  |
+| `ACTIVE_TIER`         | `3`                         | League coverage: 1=lean, 2=mid, 3=full     |
+| `SEASON`              | `2025`                      | Football season to scrape                  |
+| `INTERVAL_FULL_SWEEP` | `10800`                     | Seconds between full sweeps (3h)           |
+| `INTERVAL_CLOSING_6H` | `900`                       | Seconds between closing-line scrapes (15m) |
+| `DAILY_REQUEST_LIMIT` | `7500`                      | Budget cap — stops scraping when hit       |
+| `BUDGET_ALERT_PCT`    | `0.80`                      | Log warning at this % of daily budget      |
+| `LOG_LEVEL`           | `INFO`                      | Python log level                           |
 
 ## Linking Polymarket Events
 
