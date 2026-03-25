@@ -190,6 +190,8 @@ def cmd_scheduler(api: FootballAPI, store: Store) -> None:
     _safe(job_refresh_fixtures, api, store)()
     # _safe(job_polymarket_refresh, store)()
     _safe(job_full_sweep, api, store)()
+    _safe(job_closing_line, api, store, 24)()
+    _safe(job_closing_line, api, store, 6)()
 
     while not _shutdown_flag:
         schedule.run_pending()
