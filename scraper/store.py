@@ -76,12 +76,42 @@ class Store:
         strategy: str,
         snapshot_ts: datetime | None = None,
     ) -> int:
-        """Save a batch of odds snapshots. Returns insert count."""
+        """Save a batch of odds snapshots. Returns insert count.
+
+        Skips fixtures whose provider 'update' timestamp hasn't changed
+        since the last stored snapshot, avoiding duplicate data.
+        """
         self._maybe_ensure_indexes()
         if not parsed_items:
             return 0
+
+        # Bulk-fetch the latest 'update' value for each fixture in one query
+        fixture_ids = [item["fixture_id"] for item in parsed_items if item.get("fixture_id")]
+        last_updates: dict[int, str | None] = {}
+        if fixture_ids:
+            pipeline = [
+                {"$match": {"fixture_id": {"$in": fixture_ids}}},
+                {"$sort": {"snapshot_ts": -1}},
+                {"$group": {"_id": "$fixture_id", "update": {"$first": "$update"}}},
+            ]
+            for doc in self.db.odds_snapshots.aggregate(pipeline):
+                last_updates[doc["_id"]] = doc.get("update")
+
         ts = snapshot_ts or datetime.now(timezone.utc)
-        docs = [{**item, "snapshot_ts": ts, "strategy": strategy} for item in parsed_items]
+        docs = []
+        skipped = 0
+        for item in parsed_items:
+            fid = item.get("fixture_id")
+            if fid in last_updates and item.get("update") and item["update"] == last_updates[fid]:
+                skipped += 1
+                continue
+            docs.append({**item, "snapshot_ts": ts, "strategy": strategy})
+
+        if skipped:
+            log.info("Skipped %d/%d fixtures (odds unchanged)", skipped, len(parsed_items))
+
+        if not docs:
+            return 0
         result = self.db.odds_snapshots.insert_many(docs)
         return len(result.inserted_ids)
 

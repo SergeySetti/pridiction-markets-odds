@@ -161,10 +161,10 @@ def cmd_scheduler(api: FootballAPI, store: Store) -> None:
     schedule.every(INTERVAL_CLOSING_6H).seconds.do(_safe(job_closing_line, api, store, 6))
 
     # Strategy 3: Polymarket refresh every 30m
-    schedule.every(INTERVAL_POLYMARKET_REFRESH).seconds.do(_safe(job_polymarket_refresh, store))
+    # schedule.every(INTERVAL_POLYMARKET_REFRESH).seconds.do(_safe(job_polymarket_refresh, store))
 
     # Strategy 3: Polymarket-targeted scrape every 15m
-    schedule.every(INTERVAL_CLOSING_6H).seconds.do(_safe(job_polymarket_target, api, store))
+    # schedule.every(INTERVAL_CLOSING_6H).seconds.do(_safe(job_polymarket_target, api, store))
 
     log.info("=" * 60)
     log.info("ODDS SCRAPER STARTED")
@@ -188,7 +188,7 @@ def cmd_scheduler(api: FootballAPI, store: Store) -> None:
     # Run initial jobs immediately
     log.info("Running initial jobs...")
     _safe(job_refresh_fixtures, api, store)()
-    _safe(job_polymarket_refresh, store)()
+    # _safe(job_polymarket_refresh, store)()
     _safe(job_full_sweep, api, store)()
 
     while not _shutdown_flag:
