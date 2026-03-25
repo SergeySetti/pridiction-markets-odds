@@ -63,7 +63,9 @@ def _scrape_and_store(
     snapshot_ts: datetime,
 ) -> int:
     """Parse raw odds items and save to MongoDB. Returns count saved."""
-    parsed = [FootballAPI.parse_odds_item(item) for item in items]
+    parsed = []
+    for item in items:
+        parsed.extend(FootballAPI.parse_odds_item(item))
     return store.save_odds_batch(parsed, strategy, snapshot_ts)
 
 

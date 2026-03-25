@@ -61,7 +61,7 @@ python -m scraper --status
 
 ### `odds_snapshots`
 
-One document per fixture per scrape. Contains all bookmakers and all bet types (Match Winner, Over/Under, BTTS, Asian Handicap, Correct Score, etc. — ~150 types come free per API call).
+One document per fixture per bookmaker per provider update. Unique on `(fixture_id, bookmaker_id, update)` — duplicate scrapes are skipped automatically.
 
 ```json
 {
@@ -70,23 +70,21 @@ One document per fixture per scrape. Contains all bookmakers and all bet types (
   "league_id": 39,
   "season": 2025,
   "update": "2026-03-20T18:02:20+00:00",
-  "snapshot_ts": "2026-03-24T12:00:00Z",
-  "strategy": "full_sweep",
-  "bookmakers": [
+  "bookmaker_id": 1,
+  "bookmaker": "Bet365",
+  "bets": [
     {
-      "name": "Bet365",
-      "bets": [
-        {
-          "name": "Match Winner",
-          "values": [
-            {"value": "Home", "odd": "3.30"},
-            {"value": "Draw", "odd": "3.80"},
-            {"value": "Away", "odd": "2.05"}
-          ]
-        }
+      "name": "Match Winner",
+      "values": [
+        {"value": "Home", "odd": "3.30"},
+        {"value": "Draw", "odd": "3.80"},
+        {"value": "Away", "odd": "2.05"}
       ]
     }
-  ]
+  ],
+  "snapshot_ts": "2026-03-24T12:00:00Z",
+  "strategy": "full_sweep",
+  "created_at": "2026-03-24T12:00:00Z"
 }
 ```
 

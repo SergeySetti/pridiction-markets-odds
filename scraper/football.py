@@ -161,11 +161,23 @@ class FootballAPI:
         }
 
     @staticmethod
-    def parse_odds_item(raw: dict[str, Any]) -> dict[str, Any]:
-        """Parse a single odds response item into a MongoDB-ready document."""
+    def parse_odds_item(raw: dict[str, Any]) -> list[dict[str, Any]]:
+        """Parse a single odds response item into per-bookmaker documents.
+
+        Returns one document per bookmaker, each containing that bookmaker's
+        bets for this fixture+update combination.
+        """
         fixture = raw.get("fixture", {})
         league = raw.get("league", {})
-        bookmakers = []
+        common = {
+            "fixture_id": fixture.get("id"),
+            "league": league.get("name", ""),
+            "league_id": league.get("id"),
+            "season": league.get("season"),
+            "update": raw.get("update"),
+        }
+
+        docs = []
         for bm in raw.get("bookmakers", []):
             bets = []
             for bet in bm.get("bets", []):
@@ -177,17 +189,10 @@ class FootballAPI:
                         for v in bet.get("values", [])
                     ],
                 })
-            bookmakers.append({
-                "id": bm.get("id"),
-                "name": bm.get("name"),
+            docs.append({
+                **common,
+                "bookmaker_id": bm.get("id"),
+                "bookmaker": bm.get("name"),
                 "bets": bets,
             })
-
-        return {
-            "fixture_id": fixture.get("id"),
-            "league": league.get("name", ""),
-            "league_id": league.get("id"),
-            "season": league.get("season"),
-            "update": raw.get("update"),
-            "bookmakers": bookmakers,
-        }
+        return docs

@@ -40,11 +40,15 @@ class Store:
             log.warning("Could not create indexes (MongoDB may be starting up)")
 
     def _ensure_indexes(self) -> None:
-        # odds_snapshots: query by fixture, time range, strategy
+        # odds_snapshots: unique per fixture+bookmaker+update (provider timestamp)
+        self.db.odds_snapshots.create_index(
+            [("fixture_id", 1), ("bookmaker_id", 1), ("update", 1)],
+            unique=True,
+            name="fixture_bookmaker_update",
+        )
         self.db.odds_snapshots.create_index([("fixture_id", 1), ("snapshot_ts", -1)])
         self.db.odds_snapshots.create_index([("snapshot_ts", -1)])
         self.db.odds_snapshots.create_index([("league_id", 1), ("snapshot_ts", -1)])
-        self.db.odds_snapshots.create_index("strategy")
 
         # fixtures: lookup by league, kickoff time
         self.db.fixtures.create_index([("league_id", 1), ("date", 1)])
@@ -56,64 +60,45 @@ class Store:
 
     # -- odds snapshots -------------------------------------------------------
 
-    def save_odds_snapshot(
-        self,
-        parsed_odds: dict[str, Any],
-        strategy: str,
-        snapshot_ts: datetime | None = None,
-    ) -> None:
-        """Save a single fixture's odds snapshot."""
-        doc = {
-            **parsed_odds,
-            "snapshot_ts": snapshot_ts or datetime.now(timezone.utc),
-            "strategy": strategy,
-        }
-        self.db.odds_snapshots.insert_one(doc)
-
     def save_odds_batch(
         self,
         parsed_items: list[dict[str, Any]],
         strategy: str,
         snapshot_ts: datetime | None = None,
     ) -> int:
-        """Save a batch of odds snapshots. Returns insert count.
+        """Save a batch of per-bookmaker odds documents. Returns upsert count.
 
-        Skips fixtures whose provider 'update' timestamp hasn't changed
-        since the last stored snapshot, avoiding duplicate data.
+        Each document is keyed by (fixture_id, bookmaker_id, update).
+        Duplicates are skipped naturally by the unique index.
         """
         self._maybe_ensure_indexes()
         if not parsed_items:
             return 0
 
-        # Bulk-fetch the latest 'update' value for each fixture in one query
-        fixture_ids = [item["fixture_id"] for item in parsed_items if item.get("fixture_id")]
-        last_updates: dict[int, str | None] = {}
-        if fixture_ids:
-            pipeline = [
-                {"$match": {"fixture_id": {"$in": fixture_ids}}},
-                {"$sort": {"snapshot_ts": -1}},
-                {"$group": {"_id": "$fixture_id", "update": {"$first": "$update"}}},
-            ]
-            for doc in self.db.odds_snapshots.aggregate(pipeline):
-                last_updates[doc["_id"]] = doc.get("update")
-
         ts = snapshot_ts or datetime.now(timezone.utc)
-        docs = []
-        skipped = 0
+        ops = []
         for item in parsed_items:
-            fid = item.get("fixture_id")
-            if fid in last_updates and item.get("update") and item["update"] == last_updates[fid]:
-                skipped += 1
-                continue
-            docs.append({**item, "snapshot_ts": ts, "strategy": strategy})
+            key = {
+                "fixture_id": item["fixture_id"],
+                "bookmaker_id": item["bookmaker_id"],
+                "update": item["update"],
+            }
+            ops.append(UpdateOne(
+                key,
+                {
+                    "$set": {**item, "snapshot_ts": ts, "strategy": strategy},
+                    "$setOnInsert": {"created_at": ts},
+                },
+                upsert=True,
+            ))
 
+        result = self.db.odds_snapshots.bulk_write(ops, ordered=False)
+        total = result.upserted_count
+        skipped = result.matched_count
         if skipped:
-            log.info("Skipped %d/%d fixtures (odds unchanged)", skipped, len(parsed_items))
-
-        if not docs:
-            return 0
-        result = self.db.odds_snapshots.insert_many(docs)
-        return len(result.inserted_ids)
+            log.info("Skipped %d/%d rows (unchanged), inserted %d new",
+                     skipped, len(ops), total)
+        return total
 
     def last_snapshot_ts(self, fixture_id: int) -> datetime | None:
         """When was this fixture last scraped?"""
