@@ -164,8 +164,8 @@ class FootballAPI:
     def parse_odds_item(raw: dict[str, Any]) -> list[dict[str, Any]]:
         """Parse a single odds response item into per-bookmaker documents.
 
-        Returns one document per bookmaker, each containing that bookmaker's
-        bets for this fixture+update combination.
+        Returns one document per bookmaker with flat home/draw/away odds
+        extracted from the Match Winner bet.
         """
         fixture = raw.get("fixture", {})
         league = raw.get("league", {})
@@ -179,20 +179,22 @@ class FootballAPI:
 
         docs = []
         for bm in raw.get("bookmakers", []):
-            bets = []
+            # Find Match Winner bet (id=1)
+            match_winner = None
             for bet in bm.get("bets", []):
-                bets.append({
-                    "name": bet.get("name"),
-                    "id": bet.get("id"),
-                    "values": [
-                        {"value": v.get("value"), "odd": v.get("odd")}
-                        for v in bet.get("values", [])
-                    ],
-                })
+                if bet.get("id") == 1:
+                    match_winner = bet
+                    break
+            if not match_winner:
+                continue
+
+            odds = {v.get("value"): v.get("odd") for v in match_winner.get("values", [])}
             docs.append({
                 **common,
                 "bookmaker_id": bm.get("id"),
                 "bookmaker": bm.get("name"),
-                "bets": bets,
+                "home_odd": odds.get("Home"),
+                "draw_odd": odds.get("Draw"),
+                "away_odd": odds.get("Away"),
             })
         return docs

@@ -61,7 +61,7 @@ python -m scraper --status
 
 ### `odds_snapshots`
 
-One document per fixture per bookmaker per provider update. Unique on `(fixture_id, bookmaker_id, update)` — duplicate scrapes are skipped automatically.
+One document per fixture per bookmaker per provider update. Unique on `(fixture_id, bookmaker_id, update)` — duplicate scrapes are skipped automatically. Stores only Match Winner odds as flat fields.
 
 ```json
 {
@@ -72,16 +72,9 @@ One document per fixture per bookmaker per provider update. Unique on `(fixture_
   "update": "2026-03-20T18:02:20+00:00",
   "bookmaker_id": 1,
   "bookmaker": "Bet365",
-  "bets": [
-    {
-      "name": "Match Winner",
-      "values": [
-        {"value": "Home", "odd": "3.30"},
-        {"value": "Draw", "odd": "3.80"},
-        {"value": "Away", "odd": "2.05"}
-      ]
-    }
-  ],
+  "home_odd": "3.30",
+  "draw_odd": "3.80",
+  "away_odd": "2.05",
   "snapshot_ts": "2026-03-24T12:00:00Z",
   "strategy": "full_sweep",
   "created_at": "2026-03-24T12:00:00Z"
